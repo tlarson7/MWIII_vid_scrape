@@ -132,22 +132,35 @@ def recursive_check(frame_delta, checkpoint):
 
 
 def recursive_endpoint(checkpoint, endpoint, game_id):
+    cur_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
+    if endpoint - cur_frame == 1:
+        return endpoint
+
     cap.set(cv2.CAP_PROP_POS_FRAMES, endpoint)
     ret, frame = cap.read()
     if ret is True:
         show_image(frame)
         cur_game_id = get_game_id(frame)
-        if cur_game_id == game_id:
+        if cur_game_id == game_id or fuzzy_match_ids(game_id, cur_game_id) is True:
             endpoint = cap.get(cv2.CAP_PROP_POS_FRAMES)
             rec_return = recursive_endpoint(checkpoint, endpoint + 60*60*4, game_id)
             return rec_return
         else:
             is_lobby = check_lobby(frame)
             if is_lobby is True:
-                endpoint = cap.get(cv2.CAP_PROP_POS_FRAMES)
-                rec_return = recursive_endpoint(checkpoint, endpoint, game_id)
+                frame_delta = endpoint - cur_frame
+                frame_delta = frame_delta / 2
+                rec_return = recursive_endpoint(checkpoint, frame_delta, game_id)
                 return rec_return
             elif cur_game_id == '':
+                rec_return = recursive_endpoint(checkpoint, endpoint + 1, game_id)
+                return rec_return
+            elif len(cur_game_id) == len(game_id):
+                frame_delta = endpoint - cur_frame
+                frame_delta = frame_delta / 2
+                rec_return = recursive_endpoint(checkpoint, frame_delta, game_id)
+                return rec_return
+            else:
                 rec_return = recursive_endpoint(checkpoint, endpoint + 1, game_id)
                 return rec_return
 
