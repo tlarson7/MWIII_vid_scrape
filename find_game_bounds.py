@@ -118,7 +118,7 @@ def main_loop():
     while cap.isOpened():
         ret, frame = cap.read()
         if ret is True:
-            show_image(frame)
+            # show_image(frame)
 
             if is_game is False:
                 is_LS = get_game_start(frame)
@@ -128,7 +128,13 @@ def main_loop():
                     minutes = t.seconds // 60
                     seconds = t.seconds % 60
                     print(f'Game started at {minutes}:{seconds}')
+
                     is_game = True
+                    game_start = cap.get(cv2.CAP_PROP_POS_FRAMES)
+                    checkpoint = game_start
+                    print(f'Checkpoint: {checkpoint}')
+            # else:
+            #     continue
 
             is_lobby = check_lobby(frame)
             if is_lobby is None:
@@ -150,15 +156,19 @@ def main_loop():
                 else:
                     target_frame = checkpoint + frames_to_skip - 1
                 cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+            elif is_lobby is False:
+                # target_frame = checkpoint + 60*60*5
+                # cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+                continue
 
-            else:
-                is_LS = get_game_start(frame)
-                if is_LS is True:
-                    milliseconds = cap.get(cv2.CAP_PROP_POS_MSEC)
-                    t = timedelta(milliseconds=milliseconds)
-                    minutes = t.seconds // 60
-                    seconds = t.seconds % 60
-                    print(f'Game started at {minutes}:{seconds}')
+            # else:
+            #     is_LS = get_game_start(frame)
+            #     if is_LS is True:
+            #         milliseconds = cap.get(cv2.CAP_PROP_POS_MSEC)
+            #         t = timedelta(milliseconds=milliseconds)
+            #         minutes = t.seconds // 60
+            #         seconds = t.seconds % 60
+            #         print(f'Game started at {minutes}:{seconds}')
 
 
 
