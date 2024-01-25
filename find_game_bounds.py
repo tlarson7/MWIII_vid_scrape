@@ -2,6 +2,7 @@ import pytesseract
 import cv2
 import numpy as np
 from datetime import timedelta
+from thefuzz import fuzz
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 print(pytesseract.get_tesseract_version())
@@ -94,6 +95,20 @@ def check_lobby(frame):
     return False
 
 
+def get_game_id(frame):
+    img = frame[1055:1080, 0:200]
+    text = pytesseract.image_to_string(img, config='--psm 7')
+    text = text.strip()
+    return text
+
+
+def fuzzy_match_ids(id1, id2):
+    score = fuzz.ratio(id1, id2)
+    if score >= 89:
+        return True
+    return False
+
+
 def recursive_check(frame_delta, checkpoint):
     if frame_delta == 1:
         return 1
@@ -102,6 +117,11 @@ def recursive_check(frame_delta, checkpoint):
     ret, frame = cap.read()
     if ret is True:
         show_image(frame)
+
+        is_game = get_game_start(frame)
+        if is_game is True:
+            return frame_delta
+
         is_lobby = check_lobby(frame)
         if is_lobby is False or is_lobby is None:
             final_frame_delta = recursive_check(int(frame_delta / 2), checkpoint)
@@ -111,6 +131,26 @@ def recursive_check(frame_delta, checkpoint):
             # recursive_check(frame_delta)
 
 
+def recursive_endpoint(checkpoint, endpoint, game_id):
+    cap.set(cv2.CAP_PROP_POS_FRAMES, endpoint)
+    ret, frame = cap.read()
+    if ret is True:
+        show_image(frame)
+        cur_game_id = get_game_id(frame)
+        if cur_game_id == game_id:
+            endpoint = cap.get(cv2.CAP_PROP_POS_FRAMES)
+            rec_return = recursive_endpoint(checkpoint, endpoint + 60*60*4, game_id)
+            return rec_return
+        else:
+            is_lobby = check_lobby(frame)
+            if is_lobby is True:
+                endpoint = cap.get(cv2.CAP_PROP_POS_FRAMES)
+                rec_return = recursive_endpoint(checkpoint, endpoint, game_id)
+                return rec_return
+            elif cur_game_id == '':
+                rec_return = recursive_endpoint(checkpoint, endpoint + 1, game_id)
+                return rec_return
+
 
 def main_loop():
     checkpoint = 18000
@@ -118,48 +158,64 @@ def main_loop():
     while cap.isOpened():
         ret, frame = cap.read()
         if ret is True:
-            # show_image(frame)
+            show_image(frame)
 
             if is_game is False:
                 is_LS = get_game_start(frame)
                 if is_LS is True:
+                    game_id = get_game_id(frame)
+
                     milliseconds = cap.get(cv2.CAP_PROP_POS_MSEC)
                     t = timedelta(milliseconds=milliseconds)
                     minutes = t.seconds // 60
                     seconds = t.seconds % 60
-                    print(f'Game started at {minutes}:{seconds}')
+                    print(f'Game ID: {game_id} started at {minutes}:{seconds}')
 
                     is_game = True
                     game_start = cap.get(cv2.CAP_PROP_POS_FRAMES)
                     checkpoint = game_start
                     print(f'Checkpoint: {checkpoint}')
-            # else:
-            #     continue
 
-            is_lobby = check_lobby(frame)
-            if is_lobby is None:
-                continue
-            elif is_lobby is True:
-                cur_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
-                checkpoint_delta = cur_frame - checkpoint
-                checkpoint = cur_frame
-                print(f'Checkpoint: {checkpoint}')
-
-                if checkpoint_delta < 18000 and checkpoint_delta >= 0:
-                    num_frames = checkpoint_delta
+                    continue
                 else:
-                    num_frames = 60*60*5
-                frames_to_skip = recursive_check(num_frames, checkpoint)
+                    is_lobby = check_lobby(frame)
+                    if is_lobby is None:
+                        continue
+                    elif is_lobby is True:
+                        cur_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
+                        checkpoint_delta = cur_frame - checkpoint
+                        checkpoint = cur_frame
+                        print(f'Checkpoint: {checkpoint}')
 
-                if frames_to_skip == 0:
-                    target_frame = checkpoint + 1
+                        if checkpoint_delta < 18000 and checkpoint_delta >= 0:
+                            num_frames = checkpoint_delta
+                        else:
+                            num_frames = 60 * 60 * 4
+                        frames_to_skip = recursive_check(num_frames, checkpoint)
+
+                        if frames_to_skip == 0:
+                            target_frame = checkpoint + 1
+                        else:
+                            target_frame = checkpoint + frames_to_skip - 1
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+                    elif is_lobby is False:
+                        # target_frame = checkpoint + 60*60*5
+                        # cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+                        continue
+            elif is_game is True:
+                cur_game_id = get_game_id(frame)
+                if game_id == cur_game_id:
+                    endpoint = checkpoint + 60*60*4 - 1
+                    recursive_endpoint(checkpoint, endpoint, game_id)
                 else:
-                    target_frame = checkpoint + frames_to_skip - 1
-                cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
-            elif is_lobby is False:
-                # target_frame = checkpoint + 60*60*5
-                # cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
-                continue
+                     is_lobby = check_lobby(frame)
+                     if is_lobby is True:
+                        endpoint = cap.get(cv2.CAP_PROP_POS_FRAMES)
+                        print(f'Checkpoint: {checkpoint}')
+
+
+
+
 
             # else:
             #     is_LS = get_game_start(frame)
