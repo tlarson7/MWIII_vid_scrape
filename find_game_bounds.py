@@ -209,12 +209,12 @@ def main_loop():
     while cap.isOpened():
         ret, frame = cap.read()
         if ret is True:
-            try:
-                print(game_end)
-            except:
-                pass
-            else:
-                show_image(frame)
+            # try:
+            #     print(game_end)
+            # except:
+            #     pass
+            # else:
+            #     show_image(frame)
 
             if is_game is False:
                 is_LS = get_game_start(frame)
@@ -243,7 +243,7 @@ def main_loop():
                         checkpoint = cur_frame
                         print(f'Checkpoint: {checkpoint}')
 
-                        if checkpoint_delta < 18000 and checkpoint_delta >= 0:
+                        if checkpoint_delta < 18000 and checkpoint_delta >= 2:
                             num_frames = checkpoint_delta
                         else:
                             num_frames = 60 * 60 * 4
