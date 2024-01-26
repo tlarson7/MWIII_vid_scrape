@@ -123,7 +123,7 @@ def recursive_check(frame_delta, checkpoint):
     cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
     ret, frame = cap.read()
     if ret is True:
-        show_image(frame)
+        # show_image(frame)
 
         is_game = get_game_start(frame)
         if is_game is True:
@@ -141,13 +141,15 @@ def recursive_check(frame_delta, checkpoint):
 def recursive_endpoint(checkpoint, target_frame, game_id, endpoint):
     last_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
     if endpoint is not None:
-        if endpoint - checkpoint == 1:
+        if endpoint - checkpoint < 200:
+            print(f'Final Endpoint {endpoint}')
             return endpoint
 
     cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
     ret, frame = cap.read()
+    cur_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
     if ret is True:
-        show_image(frame)
+        # show_image(frame)
         cur_game_id = get_game_id(frame)
         is_id_valid = None
         try:
@@ -160,7 +162,18 @@ def recursive_endpoint(checkpoint, target_frame, game_id, endpoint):
         if cur_game_id == game_id or fuzzy_match_ids(game_id, cur_game_id) is True:
             checkpoint = cap.get(cv2.CAP_PROP_POS_FRAMES)
             print(f'Checkpoint: {checkpoint}')
-            target_frame = checkpoint + 60*60*4
+
+            if endpoint is None:
+                target_frame = checkpoint + (60 * 60 * 4)
+            else:
+                if endpoint < target_frame:
+                    # target_frame = endpoint
+                    frame_delta = cur_frame - checkpoint
+                    frame_delta = round(frame_delta / 2)
+                    target_frame = checkpoint + frame_delta
+                else:
+                    target_frame = endpoint - 1
+
             rec_return = recursive_endpoint(checkpoint, target_frame, game_id, endpoint)
             return rec_return
         else:
@@ -169,6 +182,11 @@ def recursive_endpoint(checkpoint, target_frame, game_id, endpoint):
                 frame_delta = target_frame - checkpoint
                 frame_delta = round(frame_delta / 2)
                 target_frame = checkpoint + frame_delta
+
+                if cur_frame > checkpoint:
+                    endpoint = cur_frame
+                    print(f'Endpoint: {endpoint}')
+
                 rec_return = recursive_endpoint(checkpoint, target_frame, game_id, endpoint)
                 return rec_return
             elif cur_game_id == '':
@@ -191,7 +209,12 @@ def main_loop():
     while cap.isOpened():
         ret, frame = cap.read()
         if ret is True:
-            show_image(frame)
+            try:
+                print(game_end)
+            except:
+                pass
+            else:
+                show_image(frame)
 
             if is_game is False:
                 is_LS = get_game_start(frame)
@@ -239,7 +262,19 @@ def main_loop():
                 cur_game_id = get_game_id(frame)
                 if game_id == cur_game_id:
                     target_frame = checkpoint + 60*60*4 - 1
-                    recursive_endpoint(checkpoint, target_frame, game_id, None)
+                    endpoint = recursive_endpoint(checkpoint, target_frame, game_id, None)
+
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, endpoint)
+                    game_end = endpoint
+                    milliseconds = cap.get(cv2.CAP_PROP_POS_MSEC)
+                    t = timedelta(milliseconds=milliseconds)
+                    minutes = t.seconds // 60
+                    seconds = t.seconds % 60
+                    print(f'Game ID: {game_id} ended at {minutes}:{seconds}')
+
+                    is_game = False
+                    checkpoint = endpoint
+
                 else:
                      is_lobby = check_lobby(frame)
                      if is_lobby is True:
