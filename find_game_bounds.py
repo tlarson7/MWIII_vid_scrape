@@ -34,6 +34,11 @@ def ocr_and_strip(image):
     return text
 
 
+def blow_up_image(image, multiplier):
+    image = cv2.resize(image, None, fx=multiplier, fy=multiplier, interpolation=cv2.INTER_CUBIC)
+    return image
+
+
 def get_game_start(frame):
     img = frame
     # img = cv2.imread(frame)
@@ -97,6 +102,8 @@ def check_lobby(frame):
 
 def get_game_id(frame):
     img = frame[1055:1080, 0:200]
+    # img = blow_up_image(img, 2)
+
     text = pytesseract.image_to_string(img, config='--psm 7')
     text = text.strip()
     return text
@@ -141,24 +148,35 @@ def recursive_endpoint(checkpoint, endpoint, game_id):
     if ret is True:
         show_image(frame)
         cur_game_id = get_game_id(frame)
+        is_id_valid = None
+        try:
+            int(cur_game_id)
+        except:
+            is_id_valid = False
+        else:
+            is_id_valid = True
+
         if cur_game_id == game_id or fuzzy_match_ids(game_id, cur_game_id) is True:
-            endpoint = cap.get(cv2.CAP_PROP_POS_FRAMES)
-            rec_return = recursive_endpoint(checkpoint, endpoint + 60*60*4, game_id)
+            checkpoint = cap.get(cv2.CAP_PROP_POS_FRAMES)
+            endpoint = checkpoint + 60*60*4
+            rec_return = recursive_endpoint(checkpoint, endpoint, game_id)
             return rec_return
         else:
             is_lobby = check_lobby(frame)
             if is_lobby is True:
                 frame_delta = endpoint - cur_frame
-                frame_delta = frame_delta / 2
-                rec_return = recursive_endpoint(checkpoint, frame_delta, game_id)
+                frame_delta = round(frame_delta / 2)
+                endpoint = cur_frame + frame_delta
+                rec_return = recursive_endpoint(checkpoint, endpoint, game_id)
                 return rec_return
             elif cur_game_id == '':
                 rec_return = recursive_endpoint(checkpoint, endpoint + 1, game_id)
                 return rec_return
-            elif len(cur_game_id) == len(game_id):
+            elif len(cur_game_id) == len(game_id) and is_id_valid is True:
                 frame_delta = endpoint - cur_frame
-                frame_delta = frame_delta / 2
-                rec_return = recursive_endpoint(checkpoint, frame_delta, game_id)
+                frame_delta = round(frame_delta / 2)
+                endpoint = cur_frame + frame_delta
+                rec_return = recursive_endpoint(checkpoint, endpoint, game_id)
                 return rec_return
             else:
                 rec_return = recursive_endpoint(checkpoint, endpoint + 1, game_id)
