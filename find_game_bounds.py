@@ -139,8 +139,8 @@ def recursive_check(frame_delta, checkpoint):
 
 
 def recursive_endpoint(checkpoint, endpoint, game_id):
-    cur_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
-    if endpoint - cur_frame == 1:
+    last_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
+    if endpoint - checkpoint == 1:
         return endpoint
 
     cap.set(cv2.CAP_PROP_POS_FRAMES, endpoint)
@@ -158,24 +158,25 @@ def recursive_endpoint(checkpoint, endpoint, game_id):
 
         if cur_game_id == game_id or fuzzy_match_ids(game_id, cur_game_id) is True:
             checkpoint = cap.get(cv2.CAP_PROP_POS_FRAMES)
+            print(f'Checkpoint: {checkpoint}')
             endpoint = checkpoint + 60*60*4
             rec_return = recursive_endpoint(checkpoint, endpoint, game_id)
             return rec_return
         else:
             is_lobby = check_lobby(frame)
             if is_lobby is True:
-                frame_delta = endpoint - cur_frame
+                frame_delta = endpoint - checkpoint
                 frame_delta = round(frame_delta / 2)
-                endpoint = cur_frame + frame_delta
+                endpoint = checkpoint + frame_delta
                 rec_return = recursive_endpoint(checkpoint, endpoint, game_id)
                 return rec_return
             elif cur_game_id == '':
                 rec_return = recursive_endpoint(checkpoint, endpoint + 1, game_id)
                 return rec_return
             elif len(cur_game_id) == len(game_id) and is_id_valid is True:
-                frame_delta = endpoint - cur_frame
+                frame_delta = endpoint - checkpoint
                 frame_delta = round(frame_delta / 2)
-                endpoint = cur_frame + frame_delta
+                endpoint = checkpoint + frame_delta
                 rec_return = recursive_endpoint(checkpoint, endpoint, game_id)
                 return rec_return
             else:
