@@ -266,11 +266,16 @@ def main_loop():
 
                     cap.set(cv2.CAP_PROP_POS_FRAMES, endpoint)
                     game_end = endpoint
-                    milliseconds = cap.get(cv2.CAP_PROP_POS_MSEC)
-                    t = timedelta(milliseconds=milliseconds)
-                    minutes = t.seconds // 60
-                    seconds = t.seconds % 60
-                    print(f'Game ID: {game_id} ended at {minutes}:{seconds}')
+                    # milliseconds = cap.get(cv2.CAP_PROP_POS_MSEC)
+                    # t = timedelta(milliseconds=milliseconds)
+                    # minutes = t.seconds // 60
+                    # seconds = t.seconds % 60
+                    # print(f'Game ID: {game_id} ended at {minutes}:{seconds}')
+
+                    hours = game_end // 60 // 60 // 60
+                    minutes = game_end // 60 // 60 % 60
+                    seconds = game_end // 60 % 60
+                    print(f'Game ID: {game_id} ended at {hours}:{minutes}:{seconds}')
 
                     is_game = False
                     checkpoint = endpoint
