@@ -224,6 +224,7 @@ def main_loop():
     while cap.isOpened():
         ret, frame = cap.read()
         if ret is True:
+            cur_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
             # try:
             #     print(game_end)
             # except:
@@ -253,7 +254,6 @@ def main_loop():
                     if is_lobby is None:
                         continue
                     elif is_lobby is True:
-                        cur_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
                         checkpoint_delta = cur_frame - checkpoint
                         checkpoint = cur_frame
                         print(f'Checkpoint: {checkpoint}')
@@ -262,6 +262,7 @@ def main_loop():
                             num_frames = checkpoint_delta
                         else:
                             num_frames = 60 * 60 * 4
+                        # num_frames = 60 * 60 * 4
                         frames_to_skip = recursive_check(num_frames, checkpoint)
 
                         if frames_to_skip == 0:
@@ -270,9 +271,10 @@ def main_loop():
                             target_frame = checkpoint + frames_to_skip - 1
                         cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
                     elif is_lobby is False:
-                        # target_frame = checkpoint + 60*60*5
-                        # cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
-                        continue
+                        # show_image(frame)
+                        # check_lobby(frame)
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, cur_frame + 60)
+                        # TODO: could use some optimization here. Skipping 1sec each time is effective, but not efficient
             elif is_game is True:
                 cur_game_id = get_game_id(frame)
                 if game_id == cur_game_id:
