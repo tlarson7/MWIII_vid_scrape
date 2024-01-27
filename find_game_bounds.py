@@ -63,7 +63,7 @@ Mode: {mode_text}'''.strip()
     return False
 
 
-def check_lobby(frame):
+def check_lobby_fps(frame):
     fps = None
     telem_img = frame[0:20, 0:500]
     # show_image(telem_img)
@@ -100,11 +100,26 @@ def check_lobby(frame):
     return False
 
 
+def check_lobby(frame):
+    img = frame[25:75, 485:1305]  # lobby banner
+    text = pytesseract.image_to_string(img, config='--psm 7')
+    text = text.strip()
+    text = text.lower()
+    split = text.split(' ')
+
+    keywords = ['party', 'friends', 'groups', 'recent', 'showcase', 'play', 'weapons', 'operators', 'battle pass', 'battle', 'pass', 'store', 'customize']
+    for word in keywords:
+        if word.lower() in split:
+            return True
+    return False
+
+
+
 def get_game_id(frame):
     img = frame[1055:1080, 0:200]
     # img = blow_up_image(img, 2)
 
-    text = pytesseract.image_to_string(img, config='--psm 7')
+    text = pytesseract.image_to_string(img, config='--psm 7 digits')
     text = text.strip()
     return text
 
@@ -190,7 +205,7 @@ def recursive_endpoint(checkpoint, target_frame, game_id, endpoint):
                 rec_return = recursive_endpoint(checkpoint, target_frame, game_id, endpoint)
                 return rec_return
             elif cur_game_id == '':
-                rec_return = recursive_endpoint(checkpoint, target_frame + 1, game_id, endpoint)
+                rec_return = recursive_endpoint(checkpoint, target_frame + 60, game_id, endpoint)
                 return rec_return
             elif len(cur_game_id) == len(game_id) and is_id_valid is True:
                 frame_delta = target_frame - checkpoint
@@ -275,7 +290,7 @@ def main_loop():
                     hours = game_end // 60 // 60 // 60
                     minutes = game_end // 60 // 60 % 60
                     seconds = game_end // 60 % 60
-                    print(f'Game ID: {game_id} ended at {hours}:{minutes}:{seconds}')
+                    print(f'Game ID: {game_id} ended at {int(hours)}:{int(minutes)}:{int(seconds)}')
 
                     is_game = False
                     checkpoint = endpoint
