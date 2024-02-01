@@ -107,7 +107,7 @@ def check_lobby(frame):
     text = text.lower()
     split = text.split(' ')
 
-    keywords = ['party', 'friends', 'groups', 'recent', 'showcase', 'play', 'weapons', 'operators', 'battle pass', 'battle', 'pass', 'store', 'customize']
+    keywords = ['party', 'friends', 'groups', 'recent', 'showcase', 'play', 'weapons', 'operators', 'battle pass', 'battle', 'pass', 'store', 'customize', 'event', 'hq']
     for word in keywords:
         if word.lower() in split:
             return True
@@ -156,7 +156,7 @@ def recursive_check(frame_delta, checkpoint):
 def recursive_endpoint(checkpoint, target_frame, game_id, endpoint):
     last_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
     if endpoint is not None:
-        if endpoint - checkpoint < 200:
+        if endpoint - checkpoint < 300:
             print(f'Final Endpoint {endpoint}')
             return endpoint
 
@@ -165,6 +165,9 @@ def recursive_endpoint(checkpoint, target_frame, game_id, endpoint):
     cur_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
     if ret is True:
         # show_image(frame)
+        if game_id == '13276099685721952677':
+            show_image(frame)
+            check_lobby(frame)
         cur_game_id = get_game_id(frame)
         is_id_valid = None
         try:
@@ -199,8 +202,15 @@ def recursive_endpoint(checkpoint, target_frame, game_id, endpoint):
                 target_frame = checkpoint + frame_delta
 
                 if cur_frame > checkpoint:
-                    endpoint = cur_frame
+                    if endpoint is None:
+                        endpoint = cur_frame
+                    else:
+                        if endpoint > cur_frame:
+                            endpoint = cur_frame
                     print(f'Endpoint: {endpoint}')
+                    # if game_id == '13276099685721952677':
+                    #     show_image(frame)
+                    #     check_lobby(frame)
 
                 rec_return = recursive_endpoint(checkpoint, target_frame, game_id, endpoint)
                 return rec_return
