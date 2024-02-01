@@ -114,6 +114,16 @@ def check_lobby(frame):
     return False
 
 
+def check_lobby_scoreboard(frame):
+    img = frame[810:840, 88:250]
+    text = pytesseract.image_to_string(img, config='--psm 7')
+    text = text.strip()
+    text = text.lower()
+
+    if text == 'view profile':
+        return True
+    return False
+
 
 def get_game_id(frame):
     img = frame[1055:1080, 0:200]
@@ -165,9 +175,9 @@ def recursive_endpoint(checkpoint, target_frame, game_id, endpoint):
     cur_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
     if ret is True:
         # show_image(frame)
-        if game_id == '13276099685721952677':
-            show_image(frame)
-            check_lobby(frame)
+        # if game_id == '11464571761765577373':
+        #     show_image(frame)
+        #     check_lobby(frame)
         cur_game_id = get_game_id(frame)
         is_id_valid = None
         try:
@@ -196,7 +206,8 @@ def recursive_endpoint(checkpoint, target_frame, game_id, endpoint):
             return rec_return
         else:
             is_lobby = check_lobby(frame)
-            if is_lobby is True:
+            is_lobby_scoreboard = check_lobby_scoreboard(frame)
+            if is_lobby is True or is_lobby_scoreboard is True:
                 frame_delta = target_frame - checkpoint
                 frame_delta = round(frame_delta / 2)
                 target_frame = checkpoint + frame_delta
@@ -217,7 +228,7 @@ def recursive_endpoint(checkpoint, target_frame, game_id, endpoint):
             elif cur_game_id == '':
                 rec_return = recursive_endpoint(checkpoint, target_frame + 60, game_id, endpoint)
                 return rec_return
-            elif len(cur_game_id) == len(game_id) and is_id_valid is True:
+            elif (len(cur_game_id) == 19 or len(cur_game_id) == 20) and is_id_valid is True:
                 frame_delta = target_frame - checkpoint
                 frame_delta = round(frame_delta / 2)
                 target_frame = checkpoint + frame_delta
@@ -229,6 +240,7 @@ def recursive_endpoint(checkpoint, target_frame, game_id, endpoint):
 
 
 def main_loop():
+    # cap.set(cv2.CAP_PROP_POS_FRAMES, 925051)
     checkpoint = 18000
     is_game = False
     while cap.isOpened():
@@ -247,15 +259,21 @@ def main_loop():
                 if is_LS is True:
                     game_id = get_game_id(frame)
 
-                    milliseconds = cap.get(cv2.CAP_PROP_POS_MSEC)
-                    t = timedelta(milliseconds=milliseconds)
-                    minutes = t.seconds // 60
-                    seconds = t.seconds % 60
-                    print(f'Game ID: {game_id} started at {minutes}:{seconds}')
+                    # milliseconds = cap.get(cv2.CAP_PROP_POS_MSEC)
+                    # t = timedelta(milliseconds=milliseconds)
+                    # minutes = t.seconds // 60
+                    # seconds = t.seconds % 60
+                    # print(f'Game ID: {game_id} started at {minutes}:{seconds}')
 
                     is_game = True
                     game_start = cap.get(cv2.CAP_PROP_POS_FRAMES)
                     checkpoint = game_start
+
+                    hours = game_start // 60 // 60 // 60
+                    minutes = game_start // 60 // 60 % 60
+                    seconds = game_start // 60 % 60
+                    print(f'Game ID: {game_id} started at {int(hours)}:{int(minutes)}:{int(seconds)}')
+
                     print(f'Checkpoint: {checkpoint}')
 
                     continue
@@ -277,6 +295,9 @@ def main_loop():
 
                         if frames_to_skip == 0:
                             target_frame = checkpoint + 1
+                        elif frames_to_skip is None:
+                            print('End of File')
+                            break
                         else:
                             target_frame = checkpoint + frames_to_skip - 1
                         cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
