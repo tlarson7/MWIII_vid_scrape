@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from datetime import timedelta
 from thefuzz import fuzz
+from game import Game
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 print(pytesseract.get_tesseract_version())
@@ -240,9 +241,11 @@ def recursive_endpoint(checkpoint, target_frame, game_id, endpoint):
 
 
 def main_loop():
-    # cap.set(cv2.CAP_PROP_POS_FRAMES, 925051)
+    # cap.set(cv2.CAP_PROP_POS_FRAMES, 846443)
     checkpoint = 18000
     is_game = False
+    g = Game()
+    games = []
     while cap.isOpened():
         ret, frame = cap.read()
         if ret is True:
@@ -258,6 +261,7 @@ def main_loop():
                 is_LS = get_game_start(frame)
                 if is_LS is True:
                     game_id = get_game_id(frame)
+                    g.ID = game_id
 
                     # milliseconds = cap.get(cv2.CAP_PROP_POS_MSEC)
                     # t = timedelta(milliseconds=milliseconds)
@@ -268,6 +272,7 @@ def main_loop():
                     is_game = True
                     game_start = cap.get(cv2.CAP_PROP_POS_FRAMES)
                     checkpoint = game_start
+                    g.start = game_start
 
                     hours = game_start // 60 // 60 // 60
                     minutes = game_start // 60 // 60 % 60
@@ -314,6 +319,8 @@ def main_loop():
 
                     cap.set(cv2.CAP_PROP_POS_FRAMES, endpoint)
                     game_end = endpoint
+                    g.end = game_end
+                    games.append(g)
                     # milliseconds = cap.get(cv2.CAP_PROP_POS_MSEC)
                     # t = timedelta(milliseconds=milliseconds)
                     # minutes = t.seconds // 60
@@ -333,6 +340,9 @@ def main_loop():
                      if is_lobby is True:
                         endpoint = cap.get(cv2.CAP_PROP_POS_FRAMES)
                         print(f'Checkpoint: {checkpoint}')
+
+    print(games)
+    return games
 
 
 
