@@ -1,5 +1,5 @@
 class Game:
-    def __int__(self):
+    def __init__(self):
         self.ID = None
         self.start = None
         self.end = None
