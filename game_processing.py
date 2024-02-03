@@ -13,6 +13,13 @@ cap = cv2.VideoCapture('1⧸14 CMG 4s 1080p60.mp4')
 my_game = Game()
 my_game.start = 43200
 my_game.end = 73639
+my_game.map = 'skidrow'
+my_game.mode = 'hardpoint'
+
+
+def show_image(image):
+    cv2.imshow('', image)
+    cv2.waitKey(0)
 
 
 def ocr7_strip(img):
@@ -32,6 +39,30 @@ def ocr7_strip_whitelist(img, whitelist):
     text = pytesseract.image_to_string(img, config=config_str)
     text = text.strip()
     return [text]
+
+
+def ocr8_strip_whitelist(img, whitelist):
+    config_str = f'-c tessedit_char_whitelist={whitelist} --psm 8'
+    text = pytesseract.image_to_string(img, config=config_str)
+    text = text.strip()
+    return [text]
+
+
+def blow_up_image(image, multiplier):
+    image = cv2.resize(image, None, fx=multiplier, fy=multiplier, interpolation=cv2.INTER_CUBIC)
+    return image
+
+
+def thresholding(image):
+    return cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+
+
+def grayscale(image):
+    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+
+def negative(image):
+    return cv2.bitwise_not(image)
 
 
 def check_scoreboard(frame):
@@ -56,6 +87,72 @@ def check_scoreboard(frame):
         return 'Stats'
 
     return False
+
+
+def check_end_of_game(frame, mode):
+    # show_image(frame)
+    if mode == 'hardpoint':
+        score1 = frame[265:305, 50:150]
+        score1 = ocr7_strip_digonly(score1)[0]
+        try:
+            score1 = int(score1)
+        except ValueError:
+            return False, 1
+        if score1 == 250:
+            return True, None
+        
+        score2 = frame[335:385, 50:150]
+        score2 = ocr7_strip_digonly(score2)[0]
+        try:
+            score2 = int(score2)
+        except ValueError:
+            return False, 1
+        if score2 == 250:
+            return True, None
+        
+        time_rem = frame[335:360, 180:265]
+        # show_image(time_rem)
+        # show_image(time_rem)
+        time_rem = blow_up_image(time_rem, 5)
+        time_rem = cv2.bilateralFilter(time_rem, 9, 75, 75)
+        time_rem = grayscale(time_rem)
+        time_rem = thresholding(time_rem)
+        # show_image(time_rem)
+        # time_rem = negative(time_rem)
+        # show_image(time_rem)
+        # time_rem = cv2.bilateralFilter(time_rem, 9, 75, 75)
+        # show_image(time_rem)
+        # for i in range(0,10):
+        #     time_rem = cv2.erode(time_rem, (5,5))
+        #     text = ocr7_strip_whitelist(frame, '0123456789:')[0]
+        #     show_image(time_rem)
+
+        # time_rem = ocr7_strip_whitelist(frame, '"0123456789:"')[0]
+        time_rem = pytesseract.image_to_string(time_rem, config='-c tessedit_char_whitelist=0123456789: --psm 7')
+        time_rem = time_rem.strip()
+
+        split = time_rem.split(':')
+        try:
+            m = int(split[0])
+            s = int(split[1])
+        except:
+            return False, 1
+        time_rem = m + s / 60
+
+        # show_image(frame)
+        if time_rem == 0:
+            return True, None
+        else:
+            s1_rem = 250 - score1
+            s2_rem = 250 - score2
+            sec_rem = m * 60 + s
+            
+            return False, min(s1_rem, s2_rem, sec_rem)
+        
+    elif mode == 'search and destroy':
+        pass
+    elif mode == 'control':
+        pass
 
 
 def get_stats(frame):
@@ -122,6 +219,7 @@ def get_stats(frame):
 
 def traverse_game(g):
     done = False
+    end_game = False
     cap.set(cv2.CAP_PROP_POS_FRAMES, g.end - 3600)
     while done is False:
         ret, frame = cap.read()
@@ -131,19 +229,30 @@ def traverse_game(g):
                 done = True
                 return 'Done'
 
-            scoreboard = check_scoreboard(frame)
-            hours = cur_frame // 60 // 60 // 60
-            minutes = cur_frame // 60 // 60 % 60
-            seconds = cur_frame // 60 % 60
-            if scoreboard == 'IGS':
-                print(f'IGS @ {int(hours)}:{int(minutes)}:{int(seconds)}')
-            elif scoreboard == 'EGS':
-                print(f'EGS @ {int(hours)}:{int(minutes)}:{int(seconds)}')
-            elif scoreboard == 'Stats':
-                print(f'Stats @ {int(hours)}:{int(minutes)}:{int(seconds)}')
-                print(get_stats(frame))
+            if end_game is False:
+                end_game, sec_rem = check_end_of_game(frame, g.mode)
+            if end_game is True:
+                scoreboard = check_scoreboard(frame)
+                hours = cur_frame // 60 // 60 // 60
+                minutes = cur_frame // 60 // 60 % 60
+                seconds = cur_frame // 60 % 60
+                if scoreboard == 'IGS':
+                    print(f'IGS @ {int(hours)}:{int(minutes)}:{int(seconds)}')
+                elif scoreboard == 'EGS':
+                    print(f'EGS @ {int(hours)}:{int(minutes)}:{int(seconds)}')
+                elif scoreboard == 'Stats':
+                    print(f'Stats @ {int(hours)}:{int(minutes)}:{int(seconds)}')
+                    print(get_stats(frame))
+                else:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, cur_frame + 59)
             else:
-                cap.set(cv2.CAP_PROP_POS_FRAMES, cur_frame + 59)
+                if sec_rem > 1:
+                    frames_to_skip = sec_rem - 1
+                    frames_to_skip = frames_to_skip * 60
+                else:
+                    frames_to_skip = sec_rem
+                target_frame = cur_frame + frames_to_skip
+                cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
 
 
 
