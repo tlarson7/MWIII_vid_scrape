@@ -261,6 +261,7 @@ def main_loop():
                 is_LS = get_game_start(frame)
                 if is_LS is True:
                     game_id = get_game_id(frame)
+                    g = Game()
                     g.ID = game_id
 
                     # milliseconds = cap.get(cv2.CAP_PROP_POS_MSEC)
@@ -331,6 +332,7 @@ def main_loop():
                     minutes = game_end // 60 // 60 % 60
                     seconds = game_end // 60 % 60
                     print(f'Game ID: {game_id} ended at {int(hours)}:{int(minutes)}:{int(seconds)}')
+                    print(g)
 
                     is_game = False
                     checkpoint = endpoint
