@@ -4,6 +4,7 @@ import numpy as np
 from datetime import timedelta
 from thefuzz import fuzz
 from game import Game
+import pandas as pd
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 print(pytesseract.get_tesseract_version())
@@ -406,6 +407,13 @@ def main_loop():
 
 
 
-main_loop()
+games = main_loop()
+
+with open('games.txt', 'w') as f:
+    for game in games:
+        f.write(f'{game.ID} {game.map} {game.mode} {game.start} {game.end}')
+        f.write('\n')
+
+
 cap.release()
 cv2.destroyAllWindows()
