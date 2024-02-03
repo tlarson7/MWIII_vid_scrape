@@ -35,6 +35,13 @@ def ocr_and_strip(image):
     return text
 
 
+def ocr7_strip_whitelist(img, whitelist):
+    config_str = f'-c tessedit_char_whitelist={whitelist} --psm 7'
+    text = pytesseract.image_to_string(img, config=config_str)
+    text = text.strip()
+    return text
+
+
 def blow_up_image(image, multiplier):
     image = cv2.resize(image, None, fx=multiplier, fy=multiplier, interpolation=cv2.INTER_CUBIC)
     return image
@@ -62,6 +69,42 @@ Mode: {mode_text}'''.strip()
         )
         return True
     return False
+
+
+def get_map_mode(frame):
+    img = frame
+    map_img = img[75:100, 230:600]
+    map_text = ocr7_strip_whitelist(map_img, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    map_text = map_text.lower()
+    mode_img = img[100:145, 230:900]
+    mode_text = ocr7_strip_whitelist(mode_img, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    mode_text = mode_text.lower()
+
+    map_list = ['skidrow', 'karachi', 'invasion', 'terminal', 'rio', 'sub base', 'highrise']
+    mode_list = ['hardpoint', 'search and destroy', 'control']
+
+    map = None
+    if map_text in map_list:
+        map = map_text
+    else:
+        for m in map_list:
+            score = fuzz.ratio(map_text, m)
+            if score > 80:
+                map = m
+                break
+
+    mode = None
+    if mode_text in mode_list:
+        mode = mode_text
+    else:
+        for m in mode_list:
+            score = fuzz.ratio(mode_text, m)
+            if score > 80:
+                mode = m
+                break
+
+    return map, mode
+
 
 
 def check_lobby_fps(frame):
@@ -263,6 +306,7 @@ def main_loop():
                     game_id = get_game_id(frame)
                     g = Game()
                     g.ID = game_id
+                    g.map, g.mode = get_map_mode(frame)
 
                     # milliseconds = cap.get(cv2.CAP_PROP_POS_MSEC)
                     # t = timedelta(milliseconds=milliseconds)
