@@ -5,16 +5,17 @@ from datetime import timedelta
 from thefuzz import fuzz
 from game import Game
 import pandas as pd
+from find_game_bounds import games
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 print(pytesseract.get_tesseract_version())
 
 cap = cv2.VideoCapture('1⧸14 CMG 4s 1080p60.mp4')
-my_game = Game()
-my_game.start = 43200
-my_game.end = 73639
-my_game.map = 'skidrow'
-my_game.mode = 'hardpoint'
+# my_game = Game()
+# my_game.start = 43200
+# my_game.end = 73639
+# my_game.map = 'skidrow'
+# my_game.mode = 'hardpoint'
 
 
 def show_image(image):
@@ -206,11 +207,11 @@ def get_stats(frame):
     img = frame[835:870, 1385:1500] # Weapon2 Accuracy
     data['W2 Accuracy'] = ocr7_strip_whitelist(img, '0123456789.%')
 
-    errors = 0
-    for key in data.keys():
-        if data[key] == ['']:
-            errors += 1
-    print(f'errors: {errors}')
+    # errors = 0
+    # for key in data.keys():
+    #     if data[key] == ['']:
+    #         errors += 1
+    # print(f'errors: {errors}')
 
     # data['index'] = 0
     df = pd.DataFrame.from_dict(data, orient='columns')
@@ -218,6 +219,8 @@ def get_stats(frame):
 
 
 def traverse_game(g):
+    master_df = pd.DataFrame()
+    df = pd.DataFrame()
     done = False
     end_game = False
     cap.set(cv2.CAP_PROP_POS_FRAMES, g.end - 3600)
@@ -227,11 +230,12 @@ def traverse_game(g):
             cur_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
             if cur_frame > g.end:
                 done = True
-                return 'Done'
+                break
 
             if end_game is False:
                 end_game, sec_rem = check_end_of_game(frame, g.mode)
             if end_game is True:
+                # print('End of Game Found')
                 scoreboard = check_scoreboard(frame)
                 hours = cur_frame // 60 // 60 // 60
                 minutes = cur_frame // 60 // 60 % 60
@@ -242,7 +246,8 @@ def traverse_game(g):
                     print(f'EGS @ {int(hours)}:{int(minutes)}:{int(seconds)}')
                 elif scoreboard == 'Stats':
                     print(f'Stats @ {int(hours)}:{int(minutes)}:{int(seconds)}')
-                    print(get_stats(frame))
+                    df = get_stats(frame)
+                    master_df = pd.concat([master_df, df])
                 else:
                     cap.set(cv2.CAP_PROP_POS_FRAMES, cur_frame + 59)
             else:
@@ -254,8 +259,17 @@ def traverse_game(g):
                 target_frame = cur_frame + frames_to_skip
                 cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
 
+    return master_df
 
+master_df = pd.DataFrame()
+# games = [my_game]
+for game in games:
+    df = traverse_game(game)
+    df['game_id'] = [game.ID] * len(df)
+    master_df = pd.concat([master_df, df])
 
-traverse_game(my_game)
+    master_df.to_csv('Detailed_Stats.csv', index=False)
+
+# traverse_game(my_game)
 cap.release()
 cv2.destroyAllWindows()
