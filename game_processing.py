@@ -233,37 +233,36 @@ def traverse_game(g):
                 done = True
                 break
 
-            if end_game is False:
-                if prev_sec_rem > sec_rem:
-                    prev_sec_rem = sec_rem
-                end_game, sec_rem = check_end_of_game(frame, g.mode)
-            if end_game is True:
-                # print('End of Game Found')
-                scoreboard = check_scoreboard(frame)
-                hours = cur_frame // 60 // 60 // 60
-                minutes = cur_frame // 60 // 60 % 60
-                seconds = cur_frame // 60 % 60
-                if scoreboard == 'IGS':
-                    print(f'IGS @ {int(hours)}:{int(minutes)}:{int(seconds)}')
-                elif scoreboard == 'EGS':
-                    print(f'EGS @ {int(hours)}:{int(minutes)}:{int(seconds)}')
-                elif scoreboard == 'Stats':
-                    print(f'Stats @ {int(hours)}:{int(minutes)}:{int(seconds)}')
+            scoreboard = check_scoreboard(frame)
+            hours = cur_frame // 60 // 60 // 60
+            minutes = cur_frame // 60 // 60 % 60
+            seconds = cur_frame // 60 % 60
+            if scoreboard == 'IGS':
+                print(f'IGS @ {int(hours)}:{int(minutes)}:{int(seconds)}')
+            elif scoreboard == 'EGS':
+                print(f'EGS @ {int(hours)}:{int(minutes)}:{int(seconds)}')
+                if end_game is False:
+                    print('End of game found, resetting cap')
+                    end_game = True
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, cur_frame - 1500)
+            elif scoreboard == 'Stats':
+                print(f'Stats @ {int(hours)}:{int(minutes)}:{int(seconds)}')
+                if end_game is True:
                     df = get_stats(frame)
                     master_df = pd.concat([master_df, df])
-                else:
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, cur_frame + 59)
-            else:
-                if prev_sec_rem > sec_rem:
-                    if sec_rem > 1:
-                        frames_to_skip = sec_rem - 1
-                        frames_to_skip = frames_to_skip * 60
-                    else:
-                        frames_to_skip = sec_rem
-                else:
-                    frames_to_skip = 0
-                target_frame = cur_frame + frames_to_skip
-                cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+            if end_game is False:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, cur_frame + 59)
+            # else:
+            #     if prev_sec_rem > sec_rem:
+            #         if sec_rem > 1:
+            #             frames_to_skip = sec_rem - 1
+            #             frames_to_skip = frames_to_skip * 60
+            #         else:
+            #             frames_to_skip = sec_rem
+            #     else:
+            #         frames_to_skip = 0
+            #     target_frame = cur_frame + frames_to_skip
+            #     cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
 
     return master_df
 
