@@ -5,7 +5,7 @@ from datetime import timedelta
 from thefuzz import fuzz
 from game import Game
 import pandas as pd
-from find_game_bounds import games
+# from find_game_bounds import games
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 print(pytesseract.get_tesseract_version())
@@ -91,7 +91,7 @@ def check_scoreboard(frame):
 
 
 def check_end_of_game(frame, mode):
-    # show_image(frame)
+    show_image(frame)
     if mode == 'hardpoint':
         score1 = frame[265:305, 50:150]
         score1 = ocr7_strip_digonly(score1)[0]
@@ -223,6 +223,7 @@ def traverse_game(g):
     df = pd.DataFrame()
     done = False
     end_game = False
+    sec_rem = 1000000000
     cap.set(cv2.CAP_PROP_POS_FRAMES, g.end - 3600)
     while done is False:
         ret, frame = cap.read()
@@ -233,6 +234,8 @@ def traverse_game(g):
                 break
 
             if end_game is False:
+                if prev_sec_rem > sec_rem:
+                    prev_sec_rem = sec_rem
                 end_game, sec_rem = check_end_of_game(frame, g.mode)
             if end_game is True:
                 # print('End of Game Found')
@@ -251,19 +254,41 @@ def traverse_game(g):
                 else:
                     cap.set(cv2.CAP_PROP_POS_FRAMES, cur_frame + 59)
             else:
-                if sec_rem > 1:
-                    frames_to_skip = sec_rem - 1
-                    frames_to_skip = frames_to_skip * 60
+                if prev_sec_rem > sec_rem:
+                    if sec_rem > 1:
+                        frames_to_skip = sec_rem - 1
+                        frames_to_skip = frames_to_skip * 60
+                    else:
+                        frames_to_skip = sec_rem
                 else:
-                    frames_to_skip = sec_rem
+                    frames_to_skip = 0
                 target_frame = cur_frame + frames_to_skip
                 cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
 
     return master_df
 
+games = []
+with open('games.txt', 'r') as f:
+    for line in f.readlines():
+        split = line.strip().split(' ')
+        if split == ['']:
+            continue
+        my_game = Game()
+
+        if len(split) > 5:
+            my_game.map = split[1] + ' ' + split[2]
+        else:
+            my_game.map = split[1]
+        my_game.ID = split[0]
+        my_game.end = int(float(split[-1]))
+        my_game.start = int(float(split[-2]))
+        my_game.mode = split[-3]
+        games.append(my_game)
+
 master_df = pd.DataFrame()
 # games = [my_game]
 for game in games:
+    print(game)
     df = traverse_game(game)
     df['game_id'] = [game.ID] * len(df)
     master_df = pd.concat([master_df, df])
