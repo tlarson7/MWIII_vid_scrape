@@ -223,7 +223,11 @@ def traverse_game(g):
     df = pd.DataFrame()
     done = False
     end_game = False
-    sec_rem = 1000000000
+    # sec_rem = 1000000000
+    stat_frame = g.end
+    stat_frames = []
+    end_frame = g.end
+    egs_count = 0
     cap.set(cv2.CAP_PROP_POS_FRAMES, g.end - 3600)
     while done is False:
         ret, frame = cap.read()
@@ -244,14 +248,33 @@ def traverse_game(g):
                 if end_game is False:
                     print('End of game found, resetting cap')
                     end_game = True
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, cur_frame - 1500)
+                    if cur_frame < end_frame:
+                        end_frame = cur_frame
+                    if stat_frame == g.end:
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, g.end - 3600)
+                    else:
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, stat_frame - 61)
+                else:
+                    egs_count += 1
+                    if egs_count > 300:
+                        break
             elif scoreboard == 'Stats':
                 print(f'Stats @ {int(hours)}:{int(minutes)}:{int(seconds)}')
                 if end_game is True:
                     df = get_stats(frame)
                     master_df = pd.concat([master_df, df])
+                else:
+                    if cur_frame < stat_frame and end_frame - stat_frame <= 1210:
+                        stat_frame = cur_frame
+                stat_frames.append(stat_frame)
             if end_game is False:
                 cap.set(cv2.CAP_PROP_POS_FRAMES, cur_frame + 59)
+            else:
+                if stat_frames == []:
+                    continue
+                if scoreboard != 'EGS' and cur_frame > max(stat_frames) and cur_frame < end_frame:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, end_frame - 1)
+
             # else:
             #     if prev_sec_rem > sec_rem:
             #         if sec_rem > 1:
@@ -292,7 +315,7 @@ for game in games:
     df['game_id'] = [game.ID] * len(df)
     master_df = pd.concat([master_df, df])
 
-    master_df.to_csv('Detailed_Stats.csv', index=False)
+    # master_df.to_csv('Detailed_Stats.csv', index=False)
 
 # traverse_game(my_game)
 cap.release()
