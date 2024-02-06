@@ -218,6 +218,41 @@ def get_stats(frame):
     return df
 
 
+def get_scoreboard(frame):
+    master_df = pd.DataFrame()
+    # # Non ranked scoreboard algo
+    y1 = 290
+    # y1 = 625
+    y_delta = 35
+    for i in range(0, 4):
+        if i > 0:
+            y1 = y2 + 5
+        y2 = y1 + y_delta
+
+        new_img = frame[y1:y2, 135:1110]
+        new_img = cv2.resize(new_img, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+
+        text = pytesseract.image_to_string(new_img, config='--psm 7')
+        text = text.strip()
+        # print(text)
+        split = text.split(' ')
+        print(split)
+
+        data = {}
+        data['player'] = [split[0]]
+        data['score'] = [split[1]]
+        data['kills'] = [split[2]]
+        data['time'] = [split[3]]
+        data['defends'] = [split[4]]
+        data['deaths'] = [split[5]]
+
+        df = pd.DataFrame().from_dict(data)
+        master_df = pd.concat([master_df, df])
+
+        # show_image(new_img)
+    return master_df
+
+
 def traverse_game(g):
     master_df = pd.DataFrame()
     df = pd.DataFrame()
@@ -255,6 +290,7 @@ def traverse_game(g):
                     else:
                         cap.set(cv2.CAP_PROP_POS_FRAMES, stat_frame - 61)
                 else:
+                    get_scoreboard(frame)
                     egs_count += 1
                     if egs_count > 300:
                         break
