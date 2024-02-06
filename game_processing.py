@@ -221,33 +221,37 @@ def get_stats(frame):
 def get_scoreboard(frame):
     master_df = pd.DataFrame()
     # # Non ranked scoreboard algo
-    y1 = 290
+    y1s = [290, 625]
     # y1 = 625
     y_delta = 35
-    for i in range(0, 4):
-        if i > 0:
-            y1 = y2 + 5
-        y2 = y1 + y_delta
+    for y1 in y1s:
+        for i in range(0, 4):
+            if i > 0:
+                y1 = y2 + 5
+            y2 = y1 + y_delta
 
-        new_img = frame[y1:y2, 135:1110]
-        new_img = cv2.resize(new_img, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+            new_img = frame[y1:y2, 135:1110]
+            new_img = cv2.resize(new_img, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
 
-        text = pytesseract.image_to_string(new_img, config='--psm 7')
-        text = text.strip()
-        # print(text)
-        split = text.split(' ')
-        print(split)
+            text = pytesseract.image_to_string(new_img, config='--psm 7')
+            text = text.strip()
+            # print(text)
+            split = text.split(' ')
+            print(split)
+            if len(split) != 6:
+                print('incorrect split')
+                continue
 
-        data = {}
-        data['player'] = [split[0]]
-        data['score'] = [split[1]]
-        data['kills'] = [split[2]]
-        data['time'] = [split[3]]
-        data['defends'] = [split[4]]
-        data['deaths'] = [split[5]]
+            data = {}
+            data['player'] = [split[0]]
+            data['score'] = [split[1]]
+            data['kills'] = [split[2]]
+            data['time'] = [split[3]]
+            data['defends'] = [split[4]]
+            data['deaths'] = [split[5]]
 
-        df = pd.DataFrame().from_dict(data)
-        master_df = pd.concat([master_df, df])
+            df = pd.DataFrame().from_dict(data)
+            master_df = pd.concat([master_df, df], ignore_index=True)
 
         # show_image(new_img)
     return master_df
@@ -256,6 +260,8 @@ def get_scoreboard(frame):
 def traverse_game(g):
     master_df = pd.DataFrame()
     df = pd.DataFrame()
+    scoreboard_master = pd.DataFrame()
+    scoreboard_df = pd.DataFrame()
     done = False
     end_game = False
     # sec_rem = 1000000000
@@ -290,7 +296,8 @@ def traverse_game(g):
                     else:
                         cap.set(cv2.CAP_PROP_POS_FRAMES, stat_frame - 61)
                 else:
-                    get_scoreboard(frame)
+                    scoreboard_df = get_scoreboard(frame)
+                    scoreboard_master = pd.concat([scoreboard_master, scoreboard_df], ignore_index=True)
                     egs_count += 1
                     if egs_count > 300:
                         break
@@ -323,7 +330,7 @@ def traverse_game(g):
             #     target_frame = cur_frame + frames_to_skip
             #     cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
 
-    return master_df
+    return master_df, scoreboard_master
 
 games = []
 with open('games.txt', 'r') as f:
@@ -343,15 +350,20 @@ with open('games.txt', 'r') as f:
         my_game.mode = split[-3]
         games.append(my_game)
 
+scoreboard_master = pd.DataFrame()
 master_df = pd.DataFrame()
 # games = [my_game]
 for game in games:
     print(game)
-    df = traverse_game(game)
+    df, scoreboard_df = traverse_game(game)
     df['game_id'] = [game.ID] * len(df)
     master_df = pd.concat([master_df, df])
 
-    # master_df.to_csv('Detailed_Stats.csv', index=False)
+    scoreboard_df['game_id'] = [game.ID] * len(scoreboard_df)
+    scoreboard_master = pd.concat([scoreboard_master, scoreboard_df], ignore_index=True)
+
+    master_df.to_csv('Detailed_Stats.csv', index=False)
+    scoreboard_master.to_csv('Scoreboard_Stats.csv', index=False)
 
 # traverse_game(my_game)
 cap.release()
