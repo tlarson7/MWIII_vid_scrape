@@ -249,6 +249,7 @@ def get_scoreboard(frame):
             data['time'] = [split[3]]
             data['defends'] = [split[4]]
             data['deaths'] = [split[5]]
+            # TODO: add team #
 
             df = pd.DataFrame().from_dict(data)
             master_df = pd.concat([master_df, df], ignore_index=True)
