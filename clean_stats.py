@@ -52,6 +52,19 @@ def clean_names(df):
 
         df.loc[(df['player'] == name), ['player']] = pname
 
+    shit_indx = shit_df.index.tolist()
+    df.drop(shit_indx, inplace=True)
+
+    return df
+
+
+def remove_shit_list(df, opp_names, shit_list):
+    for name in shit_list:
+        # shit_df = df[df['player'] == name]
+        shit_df = df.query('player == @name')
+        indexes = shit_df.index.tolist()
+        df.drop(indexes, inplace=True)
+
     return df
 
 
@@ -120,12 +133,56 @@ def clean_scoreboard():
             player_df = game_df[game_df['player'] == player]
             mode = player_df.mode()
 
+            for col in mode:
+                if col == 'player':
+                    continue
+                stat = mode[col][0]
+                if col == 'time':
+                    if stat[0] == '8' or stat[2] == '8':
+                        stat = stat.replace('8', '0')
+                        mode[col][0] = stat
+                    if ':' not in stat and len(stat) == 3:
+                        stat = f'{stat[0]}:{stat[1]}{stat[2]}'
+                try:
+                    int(stat)
+                except ValueError:
+                    stat = stat.replace('l', '1')
+                    stat = stat.replace('I', '1')
+                    stat = stat.replace('i', '1')
+                    stat = stat.replace('|', '1')
+                    stat = stat.replace('g', '6')
+                    stat = stat.replace('Q', '0')
+                    stat = stat.replace('@', '0')
+                    stat = stat.replace('B', '8')
+                    mode[col][0] = stat
+
+                if col != 'time':
+                    try:
+                        int(stat)
+                    except ValueError:
+                        col_freqs = player_df[col].value_counts()
+                        for item in col_freqs.index:
+                            try:
+                                int(item)
+                            except ValueError:
+                                continue
+                            stat = item
+                            mode[col][0] = item
+                            break
+
+                    try:
+                        int(stat)
+                    except ValueError:
+                        stat = 0
+                        mode[col][0] = stat
+
             # clean_pname = check_hayz(player)
             # mode['player'] = [clean_pname]
 
             final_df = pd.concat([final_df, mode])
 
     print(final_df)
+    return final_df
 
 
 clean_scoreboard()
