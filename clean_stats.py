@@ -112,10 +112,11 @@ def clean_detailed():
                     new = round(mode['Kills'][0] / mode['KD'][0] )
                     mode[col] = [new]
 
-        final_df = pd.concat([final_df, mode])
+        final_df = pd.concat([final_df, mode], ignore_index=True)
 
     final_df.fillna(0, inplace=True)
     print(final_df)
+    return final_df
 
 
 def clean_scoreboard():
@@ -179,10 +180,17 @@ def clean_scoreboard():
             # clean_pname = check_hayz(player)
             # mode['player'] = [clean_pname]
 
-            final_df = pd.concat([final_df, mode])
+            final_df = pd.concat([final_df, mode], ignore_index=True)
 
     print(final_df)
     return final_df
 
 
-clean_scoreboard()
+scoreboard = clean_scoreboard()
+detailed = clean_detailed()
+detailed['player'] = ['Pyro#6741468'] * len(detailed)
+
+master_df = pd.merge(left=scoreboard, right=detailed, how='outer', on=['game_id', 'player'])
+print(master_df)
+
+master_df.to_csv('final_stats.csv', index=False)
